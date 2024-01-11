@@ -29,50 +29,50 @@ import uuid
 import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.guid as guid
-import ifcjson.common as common
+import file_converters.ifcjson.common as common
 from datetime import datetime
 from ifcopenshell.entity_instance import entity_instance
 
 
 class IFC2JSON5a(common.IFC2JSON):
-    SCHEMA_VERSION = '0.0.1'
+    SCHEMA_VERSION = "0.0.1"
 
     # Attributes that are not part of ifcJSON5a
     INVALIDATTRIBUTES = {
-        'OwnerHistory',
-        'RepresentationContexts',
-        'ContextOfItems',
-        'ObjectPlacement',
-        'RepresentationMaps'
+        "OwnerHistory",
+        "RepresentationContexts",
+        "ContextOfItems",
+        "ObjectPlacement",
+        "RepresentationMaps",
     }
 
     # Attributes for which the intermediate relationship object is removed
     SIMPLIFICATIONS = {
         # IfcRelAggregates
-        'IsDecomposedBy':       ['relatedObjects'],
-        'Decomposes':           ['relatingObject'],
+        "IsDecomposedBy": ["relatedObjects"],
+        "Decomposes": ["relatingObject"],
         # IfcRelContainedInSpatialStructure
-        'ContainsElements':     ['relatedElements'],
-        'ContainedInStructure': ['relatingStructure'],
+        "ContainsElements": ["relatedElements"],
+        "ContainedInStructure": ["relatingStructure"],
         # IfcRelDefinesByProperties
-        'IsDefinedBy':          ['relatingPropertyDefinition', 'relatingType'],
+        "IsDefinedBy": ["relatingPropertyDefinition", "relatingType"],
         # IfcRelAssociatesMaterial
-        'HasAssociations':      ['relatingMaterial'],
+        "HasAssociations": ["relatingMaterial"],
         # IfcRelFillsElement
-        'HasFillings':          ['relatedBuildingElement'],
-        'FillsVoids':           ['relatingOpeningElement'],
+        "HasFillings": ["relatedBuildingElement"],
+        "FillsVoids": ["relatingOpeningElement"],
         # IfcRelVoidsElement
-        'HasOpenings':          ['relatedOpeningElement'],
-        'VoidsElements':        ['relatingBuildingElement'],
+        "HasOpenings": ["relatedOpeningElement"],
+        "VoidsElements": ["relatingBuildingElement"],
         # IfcRelDefinesByType
-        'ObjectTypeOf':         ['relatedObjects'],
-        'IsTypedBy':            ['relatingType'],
+        "ObjectTypeOf": ["relatedObjects"],
+        "IsTypedBy": ["relatingType"],
         # IfcRelConnectsPathElements (!) This skips all IfcRelConnectsPathElements properties
-        'ConnectedTo':          ['relatedElement'],
-        'ConnectedFrom':        ['relatingElement'],
+        "ConnectedTo": ["relatedElement"],
+        "ConnectedFrom": ["relatingElement"],
         # IfcRelSpaceBoundary (!) This skips all spaceboundary properties like for example geometry
-        'BoundedBy':            ['relatedBuildingElement'],
-        'ProvidesBoundaries':   ['relatingSpace']
+        "BoundedBy": ["relatedBuildingElement"],
+        "ProvidesBoundaries": ["relatingSpace"],
     }
 
     settings = ifcopenshell.geom.settings()
@@ -80,9 +80,7 @@ class IFC2JSON5a(common.IFC2JSON):
     settings.set(settings.USE_WORLD_COORDS, True)
     settings.set(settings.EXCLUDE_SOLIDS_AND_SURFACES, False)
 
-    def __init__(self, ifcModel,
-                 COMPACT=False,
-                 EMPTY_PROPERTIES=False):
+    def __init__(self, ifcModel, COMPACT=False, EMPTY_PROPERTIES=False):
         """IFC SPF to ifcJSON-5a writer
 
         parameters:
@@ -118,57 +116,58 @@ class IFC2JSON5a(common.IFC2JSON):
 
         jsonObjects = []
 
-        for entity in self.ifcModel.by_type('IfcObjectDefinition'):
-            self.rootObjects[entity.id()] = guid.split(
-                guid.expand(entity.GlobalId))[1:-1]
+        for entity in self.ifcModel.by_type("IfcObjectDefinition"):
+            self.rootObjects[entity.id()] = guid.split(guid.expand(entity.GlobalId))[
+                1:-1
+            ]
 
         for key in self.rootObjects:
             entity = self.ifcModel.by_id(key)
             entityAttributes = entity.__dict__
-            entityType = entityAttributes['type']
-            if not entityType in ['IfcGeometricRepresentationContext', 'IfcOwnerHistory']:
+            entityType = entityAttributes["type"]
+            if not entityType in [
+                "IfcGeometricRepresentationContext",
+                "IfcOwnerHistory",
+            ]:
                 for attr in entity.wrapped_data.get_inverse_attribute_names():
                     inverseAttribute = getattr(entity, attr)
-                    entityAttributes[attr] = self.getAttributeValue(
-                        inverseAttribute)
+                    entityAttributes[attr] = self.getAttributeValue(inverseAttribute)
             entityAttributes["GlobalId"] = self.rootObjects[entity.id()]
 
             # Convert representations to OBJ
-            if 'Representation' in entityAttributes:
+            if "Representation" in entityAttributes:
                 obj = self.toObj(entity)
 
                 if obj:
                     id = guid.split(guid.expand(guid.new()))[1:-1]
                     ref = {}
                     if not self.COMPACT:
-                        ref['type'] = "shapeRepresentation"
-                    ref['ref'] = id
-                    entityAttributes['representations'] = [ref]
+                        ref["type"] = "shapeRepresentation"
+                    ref["ref"] = id
+                    entityAttributes["representations"] = [ref]
                     self.representations[id] = {
                         "type": "shapeRepresentation",
                         "globalId": id,
                         "representationIdentifier": "Body",
                         "representationType": "OBJ",
-                        "items": [
-                            obj
-                        ]
+                        "items": [obj],
                     }
 
                 # (!) delete original representation, even if OBJ generation fails
-                del entityAttributes['Representation']
+                del entityAttributes["Representation"]
 
             jsonObjects.append(self.createFullObject(entityAttributes))
 
         jsonObjects = jsonObjects + list(self.representations.values())
 
         return {
-            'type': 'ifcJSON-5a',
-            'version': self.SCHEMA_VERSION,
-            'schemaIdentifier': self.ifcModel.wrapped_data.schema,
-            'originatingSystem': 'IFC2JSON_python Version ' + self.VERSION,
-            'preprocessorVersion': 'IfcOpenShell ' + ifcopenshell.version,
-            'timeStamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            'data': jsonObjects
+            "type": "ifcJSON-5a",
+            "version": self.SCHEMA_VERSION,
+            "schemaIdentifier": self.ifcModel.wrapped_data.schema,
+            "originatingSystem": "IFC2JSON_python Version " + self.VERSION,
+            "preprocessorVersion": "IfcOpenShell " + ifcopenshell.version,
+            "timeStamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "data": jsonObjects,
         }
 
     def createFullObject(self, entityAttributes):
@@ -184,9 +183,8 @@ class IFC2JSON5a(common.IFC2JSON):
         fullObject = {}
 
         for attr in entityAttributes:
-
             # Line numbers are not part of IFC JSON
-            if attr == 'id':
+            if attr == "id":
                 continue
 
             # Skip all IFC entities that are not part of ifcJSON5a
@@ -197,36 +195,39 @@ class IFC2JSON5a(common.IFC2JSON):
             if attr in self.SIMPLIFICATIONS:
                 for relObject in entityAttributes[attr]:
                     for attrName in self.SIMPLIFICATIONS[attr]:
-
                         # In case of propertysets, further simplification through removing intermediate PropertySets
-                        if attr == 'IsDefinedBy':
-                            if relObject['type'] == 'RelDefinesByProperties':
-                                if relObject['relatingPropertyDefinition']:
-                                    relatingPropertyDefinition = relObject['relatingPropertyDefinition']
-                                    if 'hasProperties' in relatingPropertyDefinition:
-                                        for property in relatingPropertyDefinition['hasProperties']:
+                        if attr == "IsDefinedBy":
+                            if relObject["type"] == "RelDefinesByProperties":
+                                if relObject["relatingPropertyDefinition"]:
+                                    relatingPropertyDefinition = relObject[
+                                        "relatingPropertyDefinition"
+                                    ]
+                                    if "hasProperties" in relatingPropertyDefinition:
+                                        for property in relatingPropertyDefinition[
+                                            "hasProperties"
+                                        ]:
                                             try:
-                                                fullObject[property['name']
-                                                           ] = property['nominalValue']['value']
+                                                fullObject[property["name"]] = property[
+                                                    "nominalValue"
+                                                ]["value"]
                                             except Exception as e:
                                                 print(str(e))
                                 continue
                             else:
-                                print(relObject['type'])
+                                print(relObject["type"])
                         if attrName in relObject:
                             entityAttributes[attr] = relObject[attrName]
 
             attrKey = self.toLowerCamelcase(attr)
 
             # Replace wrappedvalue key names to value
-            if attrKey == 'wrappedValue':
-                attrKey = 'value'
+            if attrKey == "wrappedValue":
+                attrKey = "value"
 
             jsonValue = self.getAttributeValue(entityAttributes[attr])
             if jsonValue is not None:
-
                 # Entity names must be stripped of Ifc prefix
-                if attr == 'type':
+                if attr == "type":
                     jsonValue = jsonValue[3:]
 
                 fullObject[attrKey] = jsonValue
@@ -245,10 +246,9 @@ class IFC2JSON5a(common.IFC2JSON):
         """
         ref = {}
         if not COMPACT:
-
             # Entity names must be stripped of Ifc prefix
-            ref['type'] = entityAttributes['type'][3:]
-        ref['ref'] = entityAttributes['GlobalId']
+            ref["type"] = entityAttributes["type"][3:]
+        ref["ref"] = entityAttributes["GlobalId"]
         return ref
 
     def toObj(self, product):
@@ -266,17 +266,20 @@ class IFC2JSON5a(common.IFC2JSON):
                 shape = ifcopenshell.geom.create_shape(self.settings, product)
 
                 verts = shape.geometry.verts
-                vertsList = [' '.join(map(str, verts[x:x+3]))
-                             for x in range(0, len(verts), 3)]
-                vertString = 'v ' + '\nv '.join(vertsList) + '\n'
+                vertsList = [
+                    " ".join(map(str, verts[x : x + 3]))
+                    for x in range(0, len(verts), 3)
+                ]
+                vertString = "v " + "\nv ".join(vertsList) + "\n"
 
                 faces = shape.geometry.faces
-                facesList = [' '.join(map(str, faces[x:x+3]))
-                             for x in range(0, len(faces), 3)]
-                faceString = 'f ' + '\nf '.join(map(str, facesList)) + '\n'
+                facesList = [
+                    " ".join(map(str, faces[x : x + 3]))
+                    for x in range(0, len(faces), 3)
+                ]
+                faceString = "f " + "\nf ".join(map(str, facesList)) + "\n"
 
                 return vertString + faceString
             except Exception as e:
-                print(str(e) + ': Unable to generate OBJ data for ' +
-                      str(product))
+                print(str(e) + ": Unable to generate OBJ data for " + str(product))
                 return None

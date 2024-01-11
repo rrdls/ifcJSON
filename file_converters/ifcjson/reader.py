@@ -1,4 +1,5 @@
-import ifcjson.mesh as mesh
+import file_converters.ifcjson.mesh as mesh
+
 
 class IFCJSON:
     def __init__(self, json):
@@ -12,7 +13,7 @@ class IFCJSON:
 
         # Main object container
         self.index = {}
-        
+
         # Used object types container
         self.entityTypes = {}
 
@@ -27,12 +28,12 @@ class IFCJSON:
         self.applicationVersion = None
         self.timeStamp = None
         self.application = None
-        
+
         # When ifcJson data is a complete filestructure including header
         if type(json) is dict:
             self.parseHeader(json)
-            if 'data' in json:
-                self.data = json['data']
+            if "data" in json:
+                self.data = json["data"]
             else:
                 raise ValueError("Not a valid ifcJSON file")
 
@@ -45,38 +46,39 @@ class IFCJSON:
         self.parseData(self.data)
 
     def parseHeader(self, json):
-        
         # If no fileSchema available, assume it's ifcJSON-4
         # if 'fileSchema' in json:
         #     if json['fileSchema'] == 'ifcJSON-4':
         #         self.schemaIdentifier = 'IFC2X3' # IFC4
         #     else:
         #         raise ValueError('FileSchema "{}" not supported.'.format(json['fileSchema']))
-        if 'fileSchema' in json:
-            self.fileSchema = json['fileSchema']
-        if 'timeString' in json:
-            self.timeString = json['timeString']
-        if 'organization' in json:
-            self.organization = json['organization']
-        if 'creator' in json:
-            self.creator = json['creator']
-        if 'applicationVersion' in json:
-            self.applicationVersion = json['applicationVersion']
-        if 'timeStamp' in json:
-            self.timeStamp = json['timeStamp']
-        if 'application' in json:
-            self.application = json['application']
+        if "fileSchema" in json:
+            self.fileSchema = json["fileSchema"]
+        if "timeString" in json:
+            self.timeString = json["timeString"]
+        if "organization" in json:
+            self.organization = json["organization"]
+        if "creator" in json:
+            self.creator = json["creator"]
+        if "applicationVersion" in json:
+            self.applicationVersion = json["applicationVersion"]
+        if "timeStamp" in json:
+            self.timeStamp = json["timeStamp"]
+        if "application" in json:
+            self.application = json["application"]
 
     def parseData(self, data):
         if not type(data) is list:
-            raise ValueError("Not a valid ifcJSON file, data object must contain a list of entities.")
+            raise ValueError(
+                "Not a valid ifcJSON file, data object must contain a list of entities."
+            )
         for entity in data:
             self.parseValue(entity)
 
     def parseValue(self, entity):
         if type(entity) is dict:
-            if 'type' in entity:
-                if 'globalId' in entity:
+            if "type" in entity:
+                if "globalId" in entity:
                     self.addToIndex(entity)
 
             for value in entity:
@@ -86,10 +88,10 @@ class IFCJSON:
                 self.parseValue(listItem)
 
     def addType(self, entity):
-        entityType = entity['type']
+        entityType = entity["type"]
         if not entityType in self.entityTypes:
             self.entityTypes[entityType] = []
-        self.entityTypes[entityType].append(entity['globalId'])
+        self.entityTypes[entityType].append(entity["globalId"])
 
     def addToIndex(self, entity):
         """Adds entity to one of the entity indexes (entityTypes and index or geometry)
@@ -100,11 +102,13 @@ class IFCJSON:
         """
 
         # Seperately store mesh geometry (OBJ and Tessellation)
-        if('representationType' in entity) and (entity['representationType'] in ('OBJ','Tessellation')):
-            entityId = entity['globalId']
+        if ("representationType" in entity) and (
+            entity["representationType"] in ("OBJ", "Tessellation")
+        ):
+            entityId = entity["globalId"]
             self.geometry[entityId] = entity
         else:
-            entityId = entity['globalId']
+            entityId = entity["globalId"]
             self.index[entityId] = entity
             self.addType(entity)
 
@@ -173,10 +177,10 @@ class IFCJSON:
         """
         if globalId in self.geometry:
             shapeRepresentation = self.geometryById(globalId)
-            if 'items' in shapeRepresentation:
-                items = shapeRepresentation['items']
+            if "items" in shapeRepresentation:
+                items = shapeRepresentation["items"]
                 if type(items) is list:
-                    return shapeRepresentation['items']
+                    return shapeRepresentation["items"]
 
     def entities(self):
         """Returns all ifcJSON entities
@@ -195,7 +199,7 @@ class IFCJSON:
 
         """
         return self.data
-    
+
     def mainEntitiesDict(self):
         """Returns the entities from the ifcJSON 'data'
         as a dictionary with globalId as key
@@ -204,8 +208,7 @@ class IFCJSON:
         dict
 
         """
-        return {x['globalId']:x for x in self.data}
-
+        return {x["globalId"]: x for x in self.data}
 
     def geometryAsMeshes(self):
         """Returns the OBJ or Tessellation geometry as lists of globalIds, vertices per mesh and faces per mesh.
@@ -217,34 +220,46 @@ class IFCJSON:
         meshes = {}
         for globalId in self.geometry:
             value = self.geometry[globalId]
-            if 'representationType' in value:
-                if 'items' in value:
-                    if value['representationType'] == 'OBJ':
+            if "representationType" in value:
+                if "items" in value:
+                    if value["representationType"] == "OBJ":
                         meshes[globalId] = []
-                        for item in value['items']:
+                        for item in value["items"]:
                             mesh2 = mesh.ObjMesh(item)
                             print(type(mesh2))
                             meshes[globalId].append(mesh2)
-                    elif value['representationType'] == 'Tessellation':
+                    elif value["representationType"] == "Tessellation":
                         meshes[globalId] = []
-                        for item in value['items']:
-                            if item['type'] == 'IfcTriangulatedFaceSet':
-                                if 'coordinates' in item:
-                                    if isinstance(item['coordinates'], dict):
-                                        coordinates = item['coordinates']
-                                        if 'type' in coordinates:
-                                            if coordinates['type'] == 'IfcCartesianPointList3D':
-                                                if 'coordList' in coordinates:
-                                                    if isinstance(coordinates['coordList'], list):
-                                                        if 'coordIndex' in item:
-                                                            if isinstance(item['coordIndex'], list):
-                                                                vertices = coordinates['coordList']
+                        for item in value["items"]:
+                            if item["type"] == "IfcTriangulatedFaceSet":
+                                if "coordinates" in item:
+                                    if isinstance(item["coordinates"], dict):
+                                        coordinates = item["coordinates"]
+                                        if "type" in coordinates:
+                                            if (
+                                                coordinates["type"]
+                                                == "IfcCartesianPointList3D"
+                                            ):
+                                                if "coordList" in coordinates:
+                                                    if isinstance(
+                                                        coordinates["coordList"], list
+                                                    ):
+                                                        if "coordIndex" in item:
+                                                            if isinstance(
+                                                                item["coordIndex"], list
+                                                            ):
+                                                                vertices = coordinates[
+                                                                    "coordList"
+                                                                ]
                                                                 # print(vertices)
-                                                                faces = item['coordIndex']
-                                                                mesh1 = mesh.ObjMesh(vertices, faces)
+                                                                faces = item[
+                                                                    "coordIndex"
+                                                                ]
+                                                                mesh1 = mesh.ObjMesh(
+                                                                    vertices, faces
+                                                                )
                                                                 # print(type(mesh1))
-                                                                meshes[globalId].append(mesh1)
+                                                                meshes[globalId].append(
+                                                                    mesh1
+                                                                )
         return meshes
-            
-
-

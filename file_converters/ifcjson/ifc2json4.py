@@ -29,24 +29,26 @@ import uuid
 import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.guid as guid
-import ifcjson.common as common
+import file_converters.ifcjson.common as common
 from datetime import datetime
 from ifcopenshell.entity_instance import entity_instance
 
 
 class IFC2JSON4(common.IFC2JSON):
-    SCHEMA_VERSION = '0.0.1'
+    SCHEMA_VERSION = "0.0.1"
 
     settings = ifcopenshell.geom.settings()
     settings.set(settings.USE_WORLD_COORDS, False)
 
-    def __init__(self,
-                 ifcModel,
-                 COMPACT=False,
-                 NO_INVERSE=False,
-                 EMPTY_PROPERTIES=False,
-                 NO_OWNERHISTORY=False,
-                 GEOMETRY=True):
+    def __init__(
+        self,
+        ifcModel,
+        COMPACT=False,
+        NO_INVERSE=False,
+        EMPTY_PROPERTIES=False,
+        NO_OWNERHISTORY=False,
+        GEOMETRY=True,
+    ):
         """IFC SPF to ifcJSON-4 writer
 
         parameters:
@@ -74,12 +76,12 @@ class IFC2JSON4(common.IFC2JSON):
         # if self.ifcModel.wrapped_data.header.file_description.this:
         #     print(self.ifcModel.wrapped_data.header.file_description[0])
         # input()
-        
+
         if NO_OWNERHISTORY:
             self.remove_ownerhistory()
 
         # adjust GEOMETRY type
-        if GEOMETRY == 'tessellate':
+        if GEOMETRY == "tessellate":
             self.tessellate()
         elif GEOMETRY == False:
             self.remove_geometry()
@@ -99,33 +101,35 @@ class IFC2JSON4(common.IFC2JSON):
         relationships = []
 
         # Collect all entity types that already have a GlobalId
-        for entity in self.ifcModel.by_type('IfcRoot'):
-            if entity.is_a('IfcRelationship'):
+        for entity in self.ifcModel.by_type("IfcRoot"):
+            if entity.is_a("IfcRelationship"):
                 relationships.append(entity)
             else:
                 self.rootObjects[entity.id()] = guid.split(
-                    guid.expand(entity.GlobalId))[1:-1]
+                    guid.expand(entity.GlobalId)
+                )[1:-1]
 
         # seperately collect all entity types where a GlobalId needs to be added
         # for entity in self.ifcModel.by_type('IfcMaterialDefinition'):
         #     self.rootObjects[entity.id()] = str(uuid.uuid4())
-        for entity in self.ifcModel.by_type('IfcShapeRepresentation'):
+        for entity in self.ifcModel.by_type("IfcShapeRepresentation"):
             self.rootObjects[entity.id()] = str(uuid.uuid4())
-        for entity in self.ifcModel.by_type('IfcOwnerHistory'):
+        for entity in self.ifcModel.by_type("IfcOwnerHistory"):
             self.rootObjects[entity.id()] = str(uuid.uuid4())
-        for entity in self.ifcModel.by_type('IfcGeometricRepresentationContext'):
+        for entity in self.ifcModel.by_type("IfcGeometricRepresentationContext"):
             self.rootObjects[entity.id()] = str(uuid.uuid4())
 
         # Seperately add all IfcRelationship entities so they appear at the end of the list
         for entity in relationships:
-            self.rootObjects[entity.id()] = guid.split(
-                guid.expand(entity.GlobalId))[1:-1]
+            self.rootObjects[entity.id()] = guid.split(guid.expand(entity.GlobalId))[
+                1:-1
+            ]
 
         for key in self.rootObjects:
             entity = self.ifcModel.by_id(key)
             entityAttributes = entity.__dict__
-            entityType = entityAttributes['type']
-            if not entityType == 'IfcOwnerHistory':
+            entityType = entityAttributes["type"]
+            if not entityType == "IfcOwnerHistory":
                 if not self.NO_INVERSE:
                     for attr in entity.wrapped_data.get_inverse_attribute_names():
                         inverseAttribute = getattr(entity, attr)
@@ -139,14 +143,14 @@ class IFC2JSON4(common.IFC2JSON):
             jsonObjects.append(self.createFullObject(entityAttributes))
 
         return {
-            'type': 'ifcJSON',
-            'version': self.SCHEMA_VERSION,
+            "type": "ifcJSON",
+            "version": self.SCHEMA_VERSION,
             # 'schemaIdentifiers': self.ifcModel.wrapped_data.header.file_schema.schema_identifiers,
-            'schemaIdentifier': self.ifcModel.wrapped_data.schema,
-            'originatingSystem': 'IFC2JSON_python Version ' + self.VERSION,
-            'preprocessorVersion': 'IfcOpenShell ' + ifcopenshell.version,
-            'timeStamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            'data': jsonObjects
+            "schemaIdentifier": self.ifcModel.wrapped_data.schema,
+            "originatingSystem": "IFC2JSON_python Version " + self.VERSION,
+            "preprocessorVersion": "IfcOpenShell " + ifcopenshell.version,
+            "timeStamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "data": jsonObjects,
         }
 
     def createFullObject(self, entityAttributes):
@@ -162,16 +166,15 @@ class IFC2JSON4(common.IFC2JSON):
         fullObject = {}
 
         for attr in entityAttributes:
-
             # Line numbers are not part of IFC JSON
-            if attr == 'id':
+            if attr == "id":
                 continue
 
             attrKey = self.toLowerCamelcase(attr)
 
             # Replace wrappedvalue key names to value
-            if attrKey == 'wrappedValue':
-                attrKey = 'value'
+            if attrKey == "wrappedValue":
+                attrKey = "value"
 
             jsonValue = self.getAttributeValue(entityAttributes[attr])
             if jsonValue is not None:
@@ -191,14 +194,13 @@ class IFC2JSON4(common.IFC2JSON):
         """
         ref = {}
         if not COMPACT:
-            ref['type'] = entityAttributes['type']
-        ref['ref'] = entityAttributes['GlobalId']
+            ref["type"] = entityAttributes["type"]
+        ref["ref"] = entityAttributes["GlobalId"]
         return ref
 
     def tessellate(self):
-        """Converts all IfcProduct representations to IfcTriangulatedFaceSet
-        """
-        for product in self.ifcModel.by_type('IfcProduct'):
+        """Converts all IfcProduct representations to IfcTriangulatedFaceSet"""
+        for product in self.ifcModel.by_type("IfcProduct"):
             if product.Representation:
                 try:
                     representation = product.Representation
@@ -206,37 +208,50 @@ class IFC2JSON4(common.IFC2JSON):
                     context = old_shapes[0].ContextOfItems
 
                     tessellated_shape = ifcopenshell.geom.create_shape(
-                        self.settings, product)
+                        self.settings, product
+                    )
 
                     verts = tessellated_shape.geometry.verts
-                    vertsList = [verts[i:i+3] for i in range(0, len(verts), 3)]
+                    vertsList = [verts[i : i + 3] for i in range(0, len(verts), 3)]
 
                     faces = tessellated_shape.geometry.faces
-                    facesList = [faces[i:i+3] for i in range(0, len(faces), 3)]
+                    facesList = [faces[i : i + 3] for i in range(0, len(faces), 3)]
 
-                    pointlist = self.ifcModel.createIfcCartesianPointList3D(
-                        vertsList)
-                    shape = self.ifcModel.createIfcTriangulatedFaceSet(pointlist,
-                        None, None, facesList, None)
+                    pointlist = self.ifcModel.createIfcCartesianPointList3D(vertsList)
+                    shape = self.ifcModel.createIfcTriangulatedFaceSet(
+                        pointlist, None, None, facesList, None
+                    )
 
                     body_representation = self.ifcModel.createIfcShapeRepresentation(
-                        context, "Body", "Tessellation", [shape])
+                        context, "Body", "Tessellation", [shape]
+                    )
                     new_representation = self.ifcModel.createIfcProductDefinitionShape(
-                        None, None, [body_representation])
+                        None, None, [body_representation]
+                    )
 
                     representation = tuple(new_representation)
 
                 except Exception as e:
-                    print(str(e) + ': Unable to generate OBJ data for ' +
-                          str(product))
+                    print(str(e) + ": Unable to generate OBJ data for " + str(product))
 
     def remove_ownerhistory(self):
-        for entity in self.ifcModel.by_type('IfcOwnerHistory'):
+        for entity in self.ifcModel.by_type("IfcOwnerHistory"):
             self.ifcModel.remove(entity)
 
     def remove_geometry(self):
-        removeTypes = ['IfcLocalPlacement', 'IfcRepresentationMap', 'IfcGeometricRepresentationContext', 'IfcGeometricRepresentationSubContext', 'IfcProductDefinitionShape',
-                       'IfcMaterialDefinitionRepresentation', 'IfcShapeRepresentation', 'IfcRepresentationItem', 'IfcStyledRepresentation', 'IfcPresentationLayerAssignment', 'IfcTopologyRepresentation']
+        removeTypes = [
+            "IfcLocalPlacement",
+            "IfcRepresentationMap",
+            "IfcGeometricRepresentationContext",
+            "IfcGeometricRepresentationSubContext",
+            "IfcProductDefinitionShape",
+            "IfcMaterialDefinitionRepresentation",
+            "IfcShapeRepresentation",
+            "IfcRepresentationItem",
+            "IfcStyledRepresentation",
+            "IfcPresentationLayerAssignment",
+            "IfcTopologyRepresentation",
+        ]
         for ifcType in removeTypes:
             # print(ifcType)
             # (lambda x: self.ifcModel.remove(x), self.ifcModel.by_type(ifcType))
