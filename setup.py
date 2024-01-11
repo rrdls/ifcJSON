@@ -1,7 +1,3 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-setup(
-    name="ifcjson",
-    version="1",
-    py_modules=["file_converters", "schema_converters", "Samples", "Schema"],
-)
+setup(name="ifcjson", version="1", packages=find_packages())
