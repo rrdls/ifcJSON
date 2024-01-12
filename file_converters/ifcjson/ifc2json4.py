@@ -179,7 +179,7 @@ class IFC2JSON4(common.IFC2JSON):
             jsonValue = self.getAttributeValue(entityAttributes[attr])
             if jsonValue is not None:
                 fullObject[attrKey] = jsonValue
-        return fullObject
+        return self.convertAllKeysToCamelCase(fullObject)
 
     def createReferenceObject(self, entityAttributes, COMPACT=False):
         """Returns object reference

@@ -231,7 +231,7 @@ class IFC2JSON5a(common.IFC2JSON):
                     jsonValue = jsonValue[3:]
 
                 fullObject[attrKey] = jsonValue
-        return fullObject
+        return self.convertAllKeysToCamelCase(fullObject)
 
     def createReferenceObject(self, entityAttributes, COMPACT=False):
         """Returns object reference
