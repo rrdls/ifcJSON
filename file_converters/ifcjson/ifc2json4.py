@@ -137,7 +137,7 @@ class IFC2JSON4(common.IFC2JSON):
                         if not attrValue and attrValue is not False:
                             continue
                         else:
-                            entityAttributes[attr] = attrValue
+                            entityAttributes[self.toLowerCamelcase(attr)] = attrValue
 
             entityAttributes["GlobalId"] = self.rootObjects[entity.id()]
             jsonObjects.append(self.createFullObject(entityAttributes))
