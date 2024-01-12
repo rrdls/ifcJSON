@@ -88,19 +88,19 @@ class IFC2JSON:
         if entity.Name in self.DIMENSIONALEXPONENTS:
             dimExps = self.DIMENSIONALEXPONENTS[entity.Name]
             if dimExps[0] != 0:
-                dimensions["LengthExponent"] = dimExps[0]
+                dimensions["lengthExponent"] = dimExps[0]
             if dimExps[1] != 0:
-                dimensions["MassExponent"] = dimExps[1]
+                dimensions["massExponent"] = dimExps[1]
             if dimExps[2] != 0:
-                dimensions["TimeExponent"] = dimExps[2]
+                dimensions["timeExponent"] = dimExps[2]
             if dimExps[3] != 0:
-                dimensions["ElectricCurrentExponent"] = dimExps[3]
+                dimensions["electricCurrentExponent"] = dimExps[3]
             if dimExps[4] != 0:
-                dimensions["ThermodynamicTemperatureExponent"] = dimExps[4]
+                dimensions["thermodynamicTemperatureExponent"] = dimExps[4]
             if dimExps[5] != 0:
-                dimensions["AmountOfSubstanceExponent"] = dimExps[5]
+                dimensions["amountOfSubstanceExponent"] = dimExps[5]
             if dimExps[6] != 0:
-                dimensions["LuminousIntensityExponent"] = dimExps[6]
+                dimensions["luminousIntensityExponent"] = dimExps[6]
 
         return dimensions
 
