@@ -6,19 +6,17 @@ import ifcopenshell
 import ifcopenshell.guid
 import ifcopenshell.template
 
-from ifcjson.reader import IFCJSON
+from file_converters.ifcjson.reader import IFCJSON
 
 # Specific JSON types that need mapping
-INCLUDE_ATTRIBUTES = ['value']
+INCLUDE_ATTRIBUTES = ["value"]
 
 # IfcOpenShell does not seem to support dimensions: https://standards.buildingsmart.org/IFC/DEV/IFC4_2/FINAL/HTML/schema/ifcmeasureresource/lexical/ifcdimensionsforsiunit.htm
-EXCLUDE_ATTRIBUTES = ['id', 'type', 'dimensions']
+EXCLUDE_ATTRIBUTES = ["id", "type", "dimensions"]
 
 
 class JSON2IFC(IFCJSON):
-
     def __init__(self, inFilePath):
-
         self.fileSchema = None
         self.schemaIdentifier = None
         self.timeString = None
@@ -34,24 +32,23 @@ class JSON2IFC(IFCJSON):
             # When ifcJson data is a complete filestructure including header
             if type(ifcJson) is dict:
                 self.parseHeader(ifcJson)
-                if 'type' in ifcJson:
-                    if ifcJson['type'] == 'ifcJSON':
-                        
+                if "type" in ifcJson:
+                    if ifcJson["type"] == "ifcJSON":
                         self.timestamp = None
-                        
-                        if 'data' in ifcJson:
-                            self.collect_objects(ifcJson['data'])
+
+                        if "data" in ifcJson:
+                            self.collect_objects(ifcJson["data"])
                         else:
-                            print('Not a valid ifcJson file')
+                            print("Not a valid ifcJson file")
                     else:
-                        print('Not a valid ifcJson file')
+                        print("Not a valid ifcJson file")
 
                 else:
-                    print('Not a valid ifcJson file')
+                    print("Not a valid ifcJson file")
 
             # When ifcJson data is just a list of objects
             elif type(ifcJson) is dict:
-                self.collect_objects(ifcJson['data'])
+                self.collect_objects(ifcJson["data"])
 
     def toLowerCamelcase(self, string):
         """Convert string from upper to lower camelCase"""
@@ -75,12 +72,12 @@ class JSON2IFC(IFCJSON):
     def readData(self, data):
         self.data = pd.DataFrame()
         self.data["data"] = data
-        self.data['type'] = self.data['data'].apply(pd.Series)['type']
-        self.data['uuid'] = self.data['data'].apply(pd.Series)['globalId']
-        return(self.data)
+        self.data["type"] = self.data["data"].apply(pd.Series)["type"]
+        self.data["uuid"] = self.data["data"].apply(pd.Series)["globalId"]
+        return self.data
 
     def createNestedEntity(self, attributes):
-        entityType = attributes['type']
+        entityType = attributes["type"]
         entity = self.model.create_entity(entityType)
         self.fillEntity(attributes, entity)
         return entity
@@ -97,9 +94,10 @@ class JSON2IFC(IFCJSON):
 
     def getAttributeObject(self, attributeValue):
         if type(attributeValue) is dict:
-            if 'ref' in attributeValue:
-                row = self.data.loc[self.data['uuid'] ==
-                                    attributeValue['ref']]['id'].values
+            if "ref" in attributeValue:
+                row = self.data.loc[self.data["uuid"] == attributeValue["ref"]][
+                    "id"
+                ].values
                 return self.model.by_id(int(row[0]))
             else:
                 return self.createNestedEntity(attributeValue)
@@ -120,30 +118,33 @@ class JSON2IFC(IFCJSON):
                 continue
             if attribute in EXCLUDE_ATTRIBUTES:
                 continue
-            if attribute == 'globalId':
-                data['globalId'] = self.uuidToGlobalId(data['globalId'])
+            if attribute == "globalId":
+                data["globalId"] = self.uuidToGlobalId(data["globalId"])
 
             attributeValue = data[attribute]
             attributeObject = self.getAttributeObject(attributeValue)
             if attributeObject == None:
                 continue
-            if attributeName == 'Value':
-                attributeName = 'wrappedValue'
+            if attributeName == "Value":
+                attributeName = "wrappedValue"
             try:
                 setattr(entity, attributeName, attributeObject)
             except Exception:
-                if attributeName != 'GlobalId':
-                    print('Unable to set attribute %s for entity %s' %
-                          (attributeName, entity.is_a()))
+                if attributeName != "GlobalId":
+                    print(
+                        "Unable to set attribute %s for entity %s"
+                        % (attributeName, entity.is_a())
+                    )
 
     def collect_objects(self, data):
         self.data = self.readData(data)
-        project = self.data[self.data.type == 'IfcProject'].iloc[0].data
+        project = self.data[self.data.type == "IfcProject"].iloc[0].data
         self.project_globalid = ifcopenshell.guid.compress(
-            uuid.UUID(project['globalId']).hex)
-        self.project_name = project['name']
+            uuid.UUID(project["globalId"]).hex
+        )
+        self.project_name = project["name"]
         self.model = ifcopenshell.file(None, self.schemaIdentifier)
-        self.data['id'] = self.data.apply(self.createEntity, axis=1)
+        self.data["id"] = self.data.apply(self.createEntity, axis=1)
         self.data.apply(self.fillEntityFromDf, axis=1)
 
     def ifcModel(self):
